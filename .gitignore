@@ -1,0 +1,35 @@
+# Gradle and Kotlin generated files
+.gradle/
+.kotlin/
+**/build/
+
+# Local Android SDK configuration
+local.properties
+
+# Android Studio user files
+.idea/
+*.iml
+
+# Native build output
+.externalNativeBuild/
+.cxx/
+
+# Packaged application output
+*.apk
+*.aab
+captures/
+
+# Signing files and secrets
+*.jks
+*.keystore
+.env
+.env.*
+
+# Logs, profiler output, and temporary files
+*.log
+*.hprof
+tmp/
+
+# Operating-system files
+.DS_Store
+Thumbs.db

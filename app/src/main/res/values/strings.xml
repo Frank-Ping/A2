@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">A2</string>
+    <string name="welcome_title">Yuanhao\'s App</string>
+    <string name="open_sensors">Open Sensors</string>
+    <string name="sensor_heading">Sensor Data</string>
+    <string name="waiting_sensor">Waiting for sensor data</string>
+    <string name="back">Back</string>
+</resources>
