@@ -6,6 +6,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import com.example.a2.presentation.MainActivity
 import org.junit.Rule
 import org.junit.Test
@@ -34,7 +36,24 @@ class NavigationTest {
             composeTestRule.onNodeWithTag("OpenSensorsButton").performClick()
             
             waitForNode("SensorHeading")
-            composeTestRule.onNodeWithTag("BackButton").performScrollTo().performClick()
+            
+            // For TransformingLazyColumn, we might need to swipe up manually if performScrollTo fails
+            // or use a more persistent approach.
+            var found = false
+            var attempts = 0
+            while (!found && attempts < 5) {
+                try {
+                    composeTestRule.onNodeWithTag("BackButton").assertIsDisplayed()
+                    found = true
+                } catch (e: Throwable) {
+                    composeTestRule.onNodeWithTag("SensorList").performTouchInput {
+                        swipeUp(durationMillis = 500)
+                    }
+                    attempts++
+                }
+            }
+
+            composeTestRule.onNodeWithTag("BackButton").performClick()
             
             waitForNode("WelcomeTitle")
         }
@@ -52,22 +71,45 @@ class NavigationTest {
     }
 
     @Test
-    fun testSensorDataBecomesActive() {
+    fun testAllSensorsAreVisibleByScrolling() {
         waitForNode("WelcomeTitle")
         composeTestRule.onNodeWithTag("OpenSensorsButton").performClick()
         
         waitForNode("SensorHeading")
         
-        // Wait for status to contain "Active" or for X: to be populated
-        composeTestRule.waitUntil(20000) {
+        // Verify Accelerometer
+        composeTestRule.onNodeWithText("Accelerometer", substring = true).assertIsDisplayed()
+        
+        // Scroll and verify Gyroscope
+        swipeToNode("Gyroscope")
+        composeTestRule.onNodeWithText("Gyroscope", substring = true).assertIsDisplayed()
+        
+        // Scroll and verify Magnetic Field
+        swipeToNode("Magnetic Field")
+        composeTestRule.onNodeWithText("Magnetic Field", substring = true).assertIsDisplayed()
+        
+        // Scroll and verify Back button
+        swipeToNode("Back")
+        composeTestRule.onNodeWithTag("BackButton").assertIsDisplayed()
+        
+        // Return to MainActivity
+        composeTestRule.onNodeWithTag("BackButton").performClick()
+        waitForNode("WelcomeTitle")
+    }
+
+    // Helper to swipe up until a node with text is displayed
+    private fun swipeToNode(text: String, attempts: Int = 10) {
+        var count = 0
+        var found = false
+        while (!found && count < attempts) {
             try {
-                // If the emulator is running, we expect a value
-                // We check if X: label is present and contains a number (not just "X: ")
-                // Since our labels are "X: %s m/s^2", we check for "m/s"
-                composeTestRule.onNodeWithText("X:", substring = true).assertIsDisplayed()
-                true
+                composeTestRule.onNodeWithText(text, substring = true).assertIsDisplayed()
+                found = true
             } catch (e: Throwable) {
-                false
+                composeTestRule.onNodeWithTag("SensorList").performTouchInput {
+                    swipeUp(durationMillis = 500)
+                }
+                count++
             }
         }
     }

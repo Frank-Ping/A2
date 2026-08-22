@@ -1,21 +1,20 @@
 package com.example.a2.presentation
 
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.AppScaffold
@@ -28,38 +27,27 @@ import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.example.a2.R
+import com.example.a2.data.sensor.AndroidSensorRepository
+import com.example.a2.data.sensor.SensorReading
+import com.example.a2.data.sensor.SensorRepository
 import com.example.a2.presentation.theme.A2Theme
 import java.util.Locale
 
-class SensorActivity : ComponentActivity(), SensorEventListener {
+class SensorActivity : ComponentActivity() {
 
-    private lateinit var sensorManager: SensorManager
-    private var accelerometer: Sensor? = null
-
-    private var xValue by mutableStateOf<Float?>(null)
-    private var yValue by mutableStateOf<Float?>(null)
-    private var zValue by mutableStateOf<Float?>(null)
-    private var statusText by mutableStateOf("")
-    private var isRegistered = false
+    private lateinit var sensorRepository: SensorRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-
-        statusText = if (accelerometer == null) {
-            getString(R.string.status_unavailable)
-        } else {
-            getString(R.string.waiting_sensor)
-        }
+        sensorRepository = AndroidSensorRepository(applicationContext)
 
         setContent {
+            val accel by sensorRepository.accelerometer.collectAsState()
+            val gyro by sensorRepository.gyroscope.collectAsState()
+            val mag by sensorRepository.magneticField.collectAsState()
+
             SensorScreen(
-                x = xValue,
-                y = yValue,
-                z = zValue,
-                status = statusText,
+                readings = listOf(accel, gyro, mag),
                 onBack = { finish() }
             )
         }
@@ -67,42 +55,18 @@ class SensorActivity : ComponentActivity(), SensorEventListener {
 
     override fun onStart() {
         super.onStart()
-        if (!isRegistered) {
-            accelerometer?.let {
-                isRegistered = sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
-            }
-        }
+        sensorRepository.start()
     }
 
     override fun onStop() {
         super.onStop()
-        if (isRegistered) {
-            sensorManager.unregisterListener(this)
-            isRegistered = false
-        }
-    }
-
-    override fun onSensorChanged(event: SensorEvent?) {
-        if (event?.sensor?.type == Sensor.TYPE_ACCELEROMETER) {
-            // event.values indices 0, 1, 2 are X, Y, Z for accelerometer
-            xValue = event.values.getOrNull(0)
-            yValue = event.values.getOrNull(1)
-            zValue = event.values.getOrNull(2)
-            statusText = getString(R.string.status_active)
-        }
-    }
-
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-        // Not used
+        sensorRepository.stop()
     }
 }
 
 @Composable
 fun SensorScreen(
-    x: Float?,
-    y: Float?,
-    z: Float?,
-    status: String,
+    readings: List<SensorReading>,
     onBack: () -> Unit
 ) {
     A2Theme {
@@ -112,7 +76,8 @@ fun SensorScreen(
             ScreenScaffold(scrollState = listState) { contentPadding ->
                 TransformingLazyColumn(
                     contentPadding = contentPadding,
-                    state = listState
+                    state = listState,
+                    modifier = Modifier.testTag("SensorList")
                 ) {
                     item {
                         ListHeader(
@@ -129,48 +94,16 @@ fun SensorScreen(
                             )
                         }
                     }
-                    item {
-                        Text(
-                            text = stringResource(R.string.accelerometer),
-                            modifier = Modifier.fillMaxWidth(),
-                            style = MaterialTheme.typography.labelMedium,
-                            textAlign = TextAlign.Center
-                        )
+
+                    readings.forEach { reading ->
+                        item {
+                            SensorSection(reading)
+                        }
+                        item {
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
-                    item {
-                        Text(
-                            text = x?.let { stringResource(R.string.label_x, String.format(Locale.US, "%.2f", it)) } ?: "",
-                            modifier = Modifier.fillMaxWidth(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    item {
-                        Text(
-                            text = y?.let { stringResource(R.string.label_y, String.format(Locale.US, "%.2f", it)) } ?: "",
-                            modifier = Modifier.fillMaxWidth(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    item {
-                        Text(
-                            text = z?.let { stringResource(R.string.label_z, String.format(Locale.US, "%.2f", it)) } ?: "",
-                            modifier = Modifier.fillMaxWidth(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    item {
-                        Text(
-                            text = status,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("SensorStatusText"),
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+
                     item {
                         Button(
                             onClick = onBack,
@@ -187,4 +120,47 @@ fun SensorScreen(
             }
         }
     }
+}
+
+@Composable
+fun SensorSection(reading: SensorReading) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = reading.name,
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Center
+        )
+        reading.x?.let {
+            SensorValue(label = "X", value = it, unit = reading.unit)
+        }
+        reading.y?.let {
+            SensorValue(label = "Y", value = it, unit = reading.unit)
+        }
+        reading.z?.let {
+            SensorValue(label = "Z", value = it, unit = reading.unit)
+        }
+        Text(
+            text = reading.status,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(if (reading.id == android.hardware.Sensor.TYPE_ACCELEROMETER) "SensorStatusText" else "SensorStatusText_${reading.id}"),
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center,
+            color = if (reading.status == stringResource(R.string.status_active)) 
+                MaterialTheme.colorScheme.primary 
+            else 
+                MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun SensorValue(label: String, value: Float, unit: String) {
+    Text(
+        text = String.format(Locale.US, "%s: %.2f %s", label, value, unit),
+        modifier = Modifier.fillMaxWidth(),
+        style = MaterialTheme.typography.bodyMedium,
+        textAlign = TextAlign.Center
+    )
 }
