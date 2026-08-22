@@ -49,6 +49,8 @@ dependencies {
     implementation(libs.wear.tooling.preview)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.ui.test.junit4)
+    androidTestImplementation(libs.espresso.core)
+    androidTestImplementation(libs.androidx.test.runner)
     debugImplementation(libs.ui.test.manifest)
     debugImplementation(libs.ui.tooling)
 }

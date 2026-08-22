@@ -29,6 +29,7 @@ captures/
 *.log
 *.hprof
 tmp/
+.artifacts/
 
 # Operating-system files
 .DS_Store
