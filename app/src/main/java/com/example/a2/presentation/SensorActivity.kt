@@ -40,6 +40,7 @@ class SensorActivity : ComponentActivity(), SensorEventListener {
     private var yValue by mutableStateOf<Float?>(null)
     private var zValue by mutableStateOf<Float?>(null)
     private var statusText by mutableStateOf("")
+    private var isRegistered = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,21 +67,27 @@ class SensorActivity : ComponentActivity(), SensorEventListener {
 
     override fun onStart() {
         super.onStart()
-        accelerometer?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
+        if (!isRegistered) {
+            accelerometer?.let {
+                isRegistered = sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
+            }
         }
     }
 
     override fun onStop() {
         super.onStop()
-        sensorManager.unregisterListener(this)
+        if (isRegistered) {
+            sensorManager.unregisterListener(this)
+            isRegistered = false
+        }
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type == Sensor.TYPE_ACCELEROMETER) {
-            xValue = event.values[0]
-            yValue = event.values[1]
-            zValue = event.values[2]
+            // event.values indices 0, 1, 2 are X, Y, Z for accelerometer
+            xValue = event.values.getOrNull(0)
+            yValue = event.values.getOrNull(1)
+            zValue = event.values.getOrNull(2)
             statusText = getString(R.string.status_active)
         }
     }
