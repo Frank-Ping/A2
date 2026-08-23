@@ -1,20 +1,31 @@
 package com.example.a2.presentation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.AppScaffold
@@ -27,6 +38,8 @@ import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.example.a2.R
+import com.example.a2.data.health.HealthServicesRepository
+import com.example.a2.data.health.HeartRateState
 import com.example.a2.data.sensor.AndroidSensorRepository
 import com.example.a2.data.sensor.SensorReading
 import com.example.a2.data.sensor.SensorRepository
@@ -36,19 +49,24 @@ import java.util.Locale
 class SensorActivity : ComponentActivity() {
 
     private lateinit var sensorRepository: SensorRepository
+    private lateinit var healthRepository: HealthServicesRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sensorRepository = AndroidSensorRepository(applicationContext)
+        healthRepository = HealthServicesRepository(applicationContext)
 
         setContent {
             val accel by sensorRepository.accelerometer.collectAsState()
             val gyro by sensorRepository.gyroscope.collectAsState()
             val mag by sensorRepository.magneticField.collectAsState()
+            val hrState by healthRepository.heartRateState.collectAsState()
 
             SensorScreen(
                 readings = listOf(accel, gyro, mag),
-                onBack = { finish() }
+                hrState = hrState,
+                onBack = { finish() },
+                onStartHR = { healthRepository.start() }
             )
         }
     }
@@ -61,14 +79,46 @@ class SensorActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         sensorRepository.stop()
+        healthRepository.stop()
     }
 }
 
 @Composable
 fun SensorScreen(
     readings: List<SensorReading>,
-    onBack: () -> Unit
+    hrState: HeartRateState,
+    onBack: () -> Unit,
+    onStartHR: suspend () -> Unit
 ) {
+    val context = LocalContext.current
+    var permissionGranted by remember {
+        val permission = if (Build.VERSION.SDK_INT >= 36) {
+            "android.permission.health.READ_HEART_RATE"
+        } else {
+            Manifest.permission.BODY_SENSORS
+        }
+        mutableStateOf(ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED)
+    }
+
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        permissionGranted = isGranted
+    }
+
+    LaunchedEffect(permissionGranted) {
+        if (permissionGranted) {
+            onStartHR()
+        } else {
+            val permission = if (Build.VERSION.SDK_INT >= 36) {
+                "android.permission.health.READ_HEART_RATE"
+            } else {
+                Manifest.permission.BODY_SENSORS
+            }
+            launcher.launch(permission)
+        }
+    }
+
     A2Theme {
         AppScaffold {
             val listState = rememberTransformingLazyColumnState()
@@ -102,6 +152,14 @@ fun SensorScreen(
                         item {
                             Spacer(modifier = Modifier.height(8.dp))
                         }
+                    }
+
+                    item {
+                        HeartRateSection(hrState)
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
 
                     item {
@@ -148,6 +206,39 @@ fun SensorSection(reading: SensorReading) {
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
             color = if (reading.status == stringResource(R.string.status_active)) 
+                MaterialTheme.colorScheme.primary 
+            else 
+                MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun HeartRateSection(state: HeartRateState) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.heart_rate),
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Center
+        )
+        
+        val statusText = when (state) {
+            is HeartRateState.Active -> String.format(Locale.US, "%.1f %s", state.bpm, stringResource(R.string.unit_bpm))
+            HeartRateState.Measuring -> stringResource(R.string.status_measuring)
+            HeartRateState.PermissionRequired -> stringResource(R.string.status_permission_required)
+            HeartRateState.Unsupported -> stringResource(R.string.status_unsupported)
+            HeartRateState.Unavailable -> stringResource(R.string.status_unavailable)
+            HeartRateState.Waiting -> stringResource(R.string.waiting_sensor)
+            is HeartRateState.Error -> state.message
+        }
+
+        Text(
+            text = statusText,
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = if (state is HeartRateState.Active) 
                 MaterialTheme.colorScheme.primary 
             else 
                 MaterialTheme.colorScheme.onSurfaceVariant

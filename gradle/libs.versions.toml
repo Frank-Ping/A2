@@ -12,6 +12,8 @@ coreSplashscreen = "1.2.0"
 espresso = "3.7.0"
 androidxTestRunner = "1.7.0"
 junit = "4.13.2"
+healthServices = "1.1.0-rc02"
+concurrentFutures = "1.3.0"
 
 [libraries]
 play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
@@ -31,6 +33,8 @@ core-splashscreen = { group = "androidx.core", name = "core-splashscreen", versi
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+health-services = { group = "androidx.health", name = "health-services-client", version.ref = "healthServices" }
+concurrent-futures-ktx = { group = "androidx.concurrent", name = "concurrent-futures-ktx", version.ref = "concurrentFutures" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
