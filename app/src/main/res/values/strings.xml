@@ -17,6 +17,8 @@
     <string name="status_measuring">Measuring...</string>
     <string name="status_permission_required">Permission Required</string>
     <string name="status_unsupported">Unsupported</string>
+    <string name="tile_label">Heart Rate Tile</string>
+    <string name="complication_label">Heart Rate Complication</string>
     <string name="status_unavailable">Unavailable</string>
     <string name="status_error">Error</string>
     <string name="label_x">X: %s m/s²</string>

@@ -15,6 +15,9 @@ androidxTestRunner = "1.7.0"
 junit = "4.13.2"
 healthServices = "1.1.0-rc02"
 concurrentFutures = "1.3.0"
+wearTiles = "1.6.2"
+protoLayout = "1.4.2"
+watchfaceComplications = "1.3.0"
 
 [libraries]
 play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
@@ -37,6 +40,13 @@ androidx-test-runner = { group = "androidx.test", name = "runner", version.ref =
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 health-services = { group = "androidx.health", name = "health-services-client", version.ref = "healthServices" }
 concurrent-futures-ktx = { group = "androidx.concurrent", name = "concurrent-futures-ktx", version.ref = "concurrentFutures" }
+wear-tiles = { group = "androidx.wear.tiles", name = "tiles", version.ref = "wearTiles" }
+wear-tiles-renderer = { group = "androidx.wear.tiles", name = "tiles-renderer", version.ref = "wearTiles" }
+wear-protolayout = { group = "androidx.wear.protolayout", name = "protolayout", version.ref = "protoLayout" }
+wear-protolayout-expression = { group = "androidx.wear.protolayout", name = "protolayout-expression", version.ref = "protoLayout" }
+wear-protolayout-material = { group = "androidx.wear.protolayout", name = "protolayout-material", version.ref = "protoLayout" }
+wear-complications-datasource = { group = "androidx.wear.watchface", name = "watchface-complications-data-source", version.ref = "watchfaceComplications" }
+wear-complications-datasource-ktx = { group = "androidx.wear.watchface", name = "watchface-complications-data-source-ktx", version.ref = "watchfaceComplications" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

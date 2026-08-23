@@ -1,5 +1,6 @@
 package com.example.a2.data.health
 
+import android.content.ComponentName
 import android.content.Context
 import androidx.concurrent.futures.await
 import androidx.health.services.client.HealthServices
@@ -9,6 +10,11 @@ import androidx.health.services.client.data.DataPointContainer
 import androidx.health.services.client.data.DataType
 import androidx.health.services.client.data.DataTypeAvailability
 import androidx.health.services.client.data.DeltaDataType
+import androidx.wear.watchface.complications.datasource.ComplicationDataSourceUpdateRequester
+import androidx.wear.tiles.TileService
+import com.example.a2.data.shared.LatestMetricStore
+import com.example.a2.wear.complication.MetricComplicationService
+import com.example.a2.wear.tile.MetricTileService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,8 +33,9 @@ sealed class HeartRateState {
     data class Error(val message: String) : HeartRateState()
 }
 
-class HealthServicesRepository(context: Context) {
+class HealthServicesRepository(private val context: Context) {
     private val measureClient = HealthServices.getClient(context.applicationContext).measureClient
+    private val store = LatestMetricStore(context.applicationContext)
     
     private val _heartRateState = MutableStateFlow<HeartRateState>(HeartRateState.Waiting)
     val heartRateState: StateFlow<HeartRateState> = _heartRateState.asStateFlow()
@@ -61,8 +68,20 @@ class HealthServicesRepository(context: Context) {
             val newestSample = heartRateSamples.maxByOrNull { it.timeDurationFromBoot }
             newestSample?.let { sample ->
                 _heartRateState.update { HeartRateState.Active(sample.value) }
+                store.saveHeartRate(sample.value, "bpm", "Active")
+                updateExternalInterfaces()
             }
         }
+    }
+
+    private fun updateExternalInterfaces() {
+        TileService.getUpdater(context)
+            .requestUpdate(MetricTileService::class.java)
+        
+        ComplicationDataSourceUpdateRequester.create(
+            context,
+            ComponentName(context, MetricComplicationService::class.java)
+        ).requestUpdateAll()
     }
 
     suspend fun start() {
