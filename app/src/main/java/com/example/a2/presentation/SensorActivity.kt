@@ -19,6 +19,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -31,10 +36,14 @@ import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.AppScaffold
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.ListHeader
+import androidx.wear.compose.material3.ListHeaderDefaults
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
+import androidx.wear.compose.material3.ScreenScaffoldDefaults
+import androidx.wear.compose.material3.ScrollIndicator
 import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.Text
+import androidx.wear.compose.material3.TimeText
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.example.a2.R
@@ -141,18 +150,38 @@ fun SensorScreen(
     }
 
     A2Theme {
-        AppScaffold {
+        AppScaffold(timeText = { TimeText() }) {
             val listState = rememberTransformingLazyColumnState()
             val transformationSpec = rememberTransformationSpec()
-            ScreenScaffold(scrollState = listState) { contentPadding ->
+            ScreenScaffold(
+                scrollIndicator = { ScrollIndicator(listState) },
+                contentPadding = ScreenScaffoldDefaults.contentPadding
+            ) { scaffoldPadding ->
                 TransformingLazyColumn(
-                    contentPadding = contentPadding,
+                    contentPadding = scaffoldPadding,
                     state = listState,
-                    modifier = Modifier.testTag("SensorList")
+                    modifier = Modifier
+                        .testTag("SensorList")
+                        .graphicsLayer { alpha = 0.99f }
+                        .drawWithContent {
+                            drawContent()
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, Color.Black),
+                                    startY = 0f,
+                                    endY = 40.dp.toPx()
+                                ),
+                                blendMode = BlendMode.DstIn
+                            )
+                        }
                 ) {
                     item {
                         ListHeader(
                             modifier = Modifier
+                                .minimumVerticalContentPadding(
+                                    ListHeaderDefaults.minimumTopListContentPadding,
+                                    ListHeaderDefaults.minimumBottomListContentPadding
+                                )
                                 .fillMaxWidth()
                                 .transformedHeight(this, transformationSpec)
                                 .testTag("SensorHeading"),
@@ -168,19 +197,18 @@ fun SensorScreen(
 
                     readings.forEach { reading ->
                         item {
-                            SensorSection(reading)
+                            Column {
+                                SensorSection(reading)
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
                         }
-                        item {
+                    }
+
+                    item {
+                        Column {
+                            HeartRateSection(hrState)
                             Spacer(modifier = Modifier.height(8.dp))
                         }
-                    }
-
-                    item {
-                        HeartRateSection(hrState)
-                    }
-
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
 
                     item {
