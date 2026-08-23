@@ -55,15 +55,19 @@ class MetricTileService : TileService() {
                                 .setLayout(
                                     LayoutElementBuilders.Layout.Builder()
                                         .setRoot(
-                                            PrimaryLayout.Builder(requestParams.deviceConfiguration)
-                                                .setResponsiveContentInsetEnabled(true)
-                                                .setContent(
-                                                    Text.Builder(this, text)
-                                                        .setTypography(Typography.TYPOGRAPHY_TITLE1)
-                                                        .setColor(ColorBuilders.argb(0xFFFFFFFF.toInt()))
-                                                        .setModifiers(modifiers)
+                                            LayoutElementBuilders.Box.Builder()
+                                                .addContent(
+                                                    PrimaryLayout.Builder(requestParams.deviceConfiguration)
+                                                        .setResponsiveContentInsetEnabled(true)
+                                                        .setContent(
+                                                            Text.Builder(this, text)
+                                                                .setTypography(Typography.TYPOGRAPHY_TITLE1)
+                                                                .setColor(ColorBuilders.argb(0xFFFFFFFF.toInt()))
+                                                                .build()
+                                                        )
                                                         .build()
                                                 )
+                                                .setModifiers(modifiers)
                                                 .build()
                                         )
                                         .build()
