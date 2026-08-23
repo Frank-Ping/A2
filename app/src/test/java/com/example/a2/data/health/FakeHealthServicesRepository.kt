@@ -1,5 +1,6 @@
 package com.example.a2.data.health
 
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,9 +13,13 @@ class FakeHealthServicesRepository {
     var isStarted = false
     var hasPermission = true
     var isSupported = true
+    var registrationCount = 0
+    var startDelayMs = 0L
 
-    fun start() {
+    suspend fun start() {
         if (isStarted) return
+        if (startDelayMs > 0) delay(startDelayMs)
+        
         if (!hasPermission) {
             _heartRateState.update { HeartRateState.PermissionRequired }
             return
@@ -24,6 +29,7 @@ class FakeHealthServicesRepository {
             return
         }
         isStarted = true
+        registrationCount++
         _heartRateState.update { HeartRateState.Measuring }
     }
 
@@ -46,5 +52,9 @@ class FakeHealthServicesRepository {
         } else {
             _heartRateState.update { HeartRateState.Unavailable }
         }
+    }
+
+    fun onPermissionDenied() {
+        _heartRateState.update { HeartRateState.PermissionRequired }
     }
 }

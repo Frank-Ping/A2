@@ -8,6 +8,7 @@ composeFoundation = "1.6.2"
 composeUiTooling = "1.6.2"
 wearToolingPreview = "1.0.0"
 activityCompose = "1.13.0"
+lifecycleRuntimeKtx = "2.8.7"
 coreSplashscreen = "1.2.0"
 espresso = "3.7.0"
 androidxTestRunner = "1.7.0"
@@ -29,6 +30,7 @@ compose-foundation = { group = "androidx.wear.compose", name = "compose-foundati
 compose-ui-tooling = { group = "androidx.wear.compose", name = "compose-ui-tooling", version.ref = "composeUiTooling" }
 wear-tooling-preview = { group = "androidx.wear", name = "wear-tooling-preview", version.ref = "wearToolingPreview" }
 activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }

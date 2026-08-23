@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlin.coroutines.cancellation.CancellationException
 
 sealed class HeartRateState {
     object PermissionRequired : HeartRateState()
@@ -31,6 +34,7 @@ class HealthServicesRepository(context: Context) {
     val heartRateState: StateFlow<HeartRateState> = _heartRateState.asStateFlow()
 
     private var isRegistered = false
+    private val registerMutex = Mutex()
 
     private val callback = object : MeasureCallback {
         override fun onAvailabilityChanged(dataType: DeltaDataType<*, *>, availability: Availability) {
@@ -63,22 +67,27 @@ class HealthServicesRepository(context: Context) {
 
     suspend fun start() {
         if (isRegistered) return
-        try {
-            val capabilities = measureClient.getCapabilitiesAsync().await()
-            if (DataType.HEART_RATE_BPM !in capabilities.supportedDataTypesMeasure) {
-                _heartRateState.update { HeartRateState.Unsupported }
-                return
+        registerMutex.withLock {
+            if (isRegistered) return
+            try {
+                val capabilities = measureClient.getCapabilitiesAsync().await()
+                if (DataType.HEART_RATE_BPM !in capabilities.supportedDataTypesMeasure) {
+                    _heartRateState.update { HeartRateState.Unsupported }
+                    return
+                }
+                
+                measureClient.registerMeasureCallback(DataType.HEART_RATE_BPM, callback)
+                isRegistered = true
+                if (_heartRateState.value !is HeartRateState.Active) {
+                    _heartRateState.update { HeartRateState.Measuring }
+                }
+            } catch (e: SecurityException) {
+                _heartRateState.update { HeartRateState.PermissionRequired }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _heartRateState.update { HeartRateState.Error(e.message ?: "Unknown error") }
             }
-            
-            measureClient.registerMeasureCallback(DataType.HEART_RATE_BPM, callback)
-            isRegistered = true
-            if (_heartRateState.value !is HeartRateState.Active) {
-                _heartRateState.update { HeartRateState.Measuring }
-            }
-        } catch (e: SecurityException) {
-            _heartRateState.update { HeartRateState.PermissionRequired }
-        } catch (e: Exception) {
-            _heartRateState.update { HeartRateState.Error(e.message ?: "Unknown error") }
         }
     }
 
@@ -87,5 +96,9 @@ class HealthServicesRepository(context: Context) {
         measureClient.unregisterMeasureCallbackAsync(DataType.HEART_RATE_BPM, callback)
         isRegistered = false
         _heartRateState.update { HeartRateState.Waiting }
+    }
+
+    fun onPermissionDenied() {
+        _heartRateState.update { HeartRateState.PermissionRequired }
     }
 }

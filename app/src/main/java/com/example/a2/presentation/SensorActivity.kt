@@ -5,7 +5,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
@@ -26,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.AppScaffold
@@ -44,12 +44,15 @@ import com.example.a2.data.sensor.AndroidSensorRepository
 import com.example.a2.data.sensor.SensorReading
 import com.example.a2.data.sensor.SensorRepository
 import com.example.a2.presentation.theme.A2Theme
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 class SensorActivity : ComponentActivity() {
 
     private lateinit var sensorRepository: SensorRepository
     private lateinit var healthRepository: HealthServicesRepository
+    private var heartRateJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,19 +69,60 @@ class SensorActivity : ComponentActivity() {
                 readings = listOf(accel, gyro, mag),
                 hrState = hrState,
                 onBack = { finish() },
-                onStartHR = { healthRepository.start() }
+                onRequestPermission = { requestHeartRatePermission() }
             )
+        }
+    }
+
+    // ComponentActivity includes the ActivityResult API support needed; Fragment is not required.
+    @android.annotation.SuppressLint("InvalidFragmentVersionForActivityResult")
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            startHeartRateMonitoring()
+        } else {
+            healthRepository.onPermissionDenied()
+        }
+    }
+
+    private fun requestHeartRatePermission() {
+        val permission = if (Build.VERSION.SDK_INT >= 36) {
+            "android.permission.health.READ_HEART_RATE"
+        } else {
+            Manifest.permission.BODY_SENSORS
+        }
+        permissionLauncher.launch(permission)
+    }
+
+    private fun startHeartRateMonitoring() {
+        if (heartRateJob?.isActive == true) return
+        heartRateJob = lifecycleScope.launch {
+            healthRepository.start()
         }
     }
 
     override fun onStart() {
         super.onStart()
         sensorRepository.start()
+        
+        val permission = if (Build.VERSION.SDK_INT >= 36) {
+            "android.permission.health.READ_HEART_RATE"
+        } else {
+            Manifest.permission.BODY_SENSORS
+        }
+
+        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
+            startHeartRateMonitoring()
+        } else {
+            healthRepository.onPermissionDenied()
+        }
     }
 
     override fun onStop() {
         super.onStop()
         sensorRepository.stop()
+        heartRateJob?.cancel()
         healthRepository.stop()
     }
 }
@@ -88,34 +132,11 @@ fun SensorScreen(
     readings: List<SensorReading>,
     hrState: HeartRateState,
     onBack: () -> Unit,
-    onStartHR: suspend () -> Unit
+    onRequestPermission: () -> Unit
 ) {
-    val context = LocalContext.current
-    var permissionGranted by remember {
-        val permission = if (Build.VERSION.SDK_INT >= 36) {
-            "android.permission.health.READ_HEART_RATE"
-        } else {
-            Manifest.permission.BODY_SENSORS
-        }
-        mutableStateOf(ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED)
-    }
-
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        permissionGranted = isGranted
-    }
-
-    LaunchedEffect(permissionGranted) {
-        if (permissionGranted) {
-            onStartHR()
-        } else {
-            val permission = if (Build.VERSION.SDK_INT >= 36) {
-                "android.permission.health.READ_HEART_RATE"
-            } else {
-                Manifest.permission.BODY_SENSORS
-            }
-            launcher.launch(permission)
+    LaunchedEffect(Unit) {
+        if (hrState is HeartRateState.PermissionRequired || hrState is HeartRateState.Waiting) {
+            onRequestPermission()
         }
     }
 
