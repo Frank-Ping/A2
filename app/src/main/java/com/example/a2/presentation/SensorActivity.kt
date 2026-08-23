@@ -80,7 +80,6 @@ class SensorActivity : ComponentActivity() {
             SensorScreen(
                 readings = listOf(accel, gyro, mag),
                 hrState = hrState,
-                onBack = { finish() },
                 onRequestPermission = { requestHeartRatePermission() }
             )
         }
@@ -143,7 +142,6 @@ class SensorActivity : ComponentActivity() {
 fun SensorScreen(
     readings: List<SensorReading>,
     hrState: HeartRateState,
-    onBack: () -> Unit,
     onRequestPermission: () -> Unit
 ) {
     LaunchedEffect(Unit) {
@@ -193,8 +191,16 @@ fun SensorScreen(
                             Text(
                                 text = stringResource(R.string.sensor_heading),
                                 style = MaterialTheme.typography.titleMedium,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
+                                color = Color(0xFF8A2BE2)
                             )
+                        }
+                    }
+
+                    item {
+                        Column {
+                            HeartRateSection(hrState)
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
                     }
 
@@ -202,32 +208,11 @@ fun SensorScreen(
                         item {
                             Column {
                                 SensorSection(reading)
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
                             }
                         }
                     }
 
-                    item {
-                        Column {
-                            HeartRateSection(hrState)
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-                    }
-
-                    item {
-                        Button(
-                            onClick = onBack,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .wrapContentWidth(Alignment.CenterHorizontally)
-                                .width(120.dp)
-                                .transformedHeight(this, transformationSpec)
-                                .testTag("BackButton"),
-                            transformation = SurfaceTransformation(transformationSpec),
-                        ) {
-                            Text(stringResource(R.string.back))
-                        }
-                    }
                 }
             }
         }
@@ -240,7 +225,7 @@ fun SensorSection(reading: SensorReading) {
         Text(
             text = reading.name,
             modifier = Modifier.fillMaxWidth(),
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.titleSmall,
             textAlign = TextAlign.Center
         )
         reading.x?.let {
@@ -257,12 +242,12 @@ fun SensorSection(reading: SensorReading) {
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag(if (reading.id == android.hardware.Sensor.TYPE_ACCELEROMETER) "SensorStatusText" else "SensorStatusText_${reading.id}"),
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.labelSmall,
             textAlign = TextAlign.Center,
             color = if (reading.status == stringResource(R.string.status_active)) 
-                MaterialTheme.colorScheme.primary 
+                Color.Green 
             else 
-                MaterialTheme.colorScheme.onSurfaceVariant
+                Color.Red
         )
     }
 }
@@ -273,7 +258,7 @@ fun HeartRateSection(state: HeartRateState) {
         Text(
             text = stringResource(R.string.heart_rate),
             modifier = Modifier.fillMaxWidth(),
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.titleSmall,
             textAlign = TextAlign.Center
         )
         
@@ -290,12 +275,9 @@ fun HeartRateSection(state: HeartRateState) {
         Text(
             text = statusText,
             modifier = Modifier.fillMaxWidth(),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
-            color = if (state is HeartRateState.Active) 
-                MaterialTheme.colorScheme.primary 
-            else 
-                MaterialTheme.colorScheme.onSurfaceVariant
+            color = Color(0xFFFFA500)
         )
     }
 }
@@ -305,7 +287,7 @@ fun SensorValue(label: String, value: Float, unit: String) {
     Text(
         text = String.format(Locale.US, "%s: %.2f %s", label, value, unit),
         modifier = Modifier.fillMaxWidth(),
-        style = MaterialTheme.typography.bodyMedium,
+        style = MaterialTheme.typography.bodySmall,
         textAlign = TextAlign.Center
     )
 }
