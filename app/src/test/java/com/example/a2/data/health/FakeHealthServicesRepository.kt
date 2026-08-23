@@ -40,7 +40,9 @@ class FakeHealthServicesRepository {
 
     fun emitHeartRate(bpm: Double, timestampDuration: Long) {
         if (!isStarted) return
-        _heartRateState.update { HeartRateState.Active(bpm) }
+        if (bpm.isFinite() && bpm > 0) {
+            _heartRateState.update { HeartRateState.Active(bpm) }
+        }
     }
 
     fun setAvailability(available: Boolean) {

@@ -42,6 +42,7 @@ class HealthServicesRepository(private val context: Context) {
 
     private var isRegistered = false
     private val registerMutex = Mutex()
+    private var lastUpdateTime = 0L
 
     private val callback = object : MeasureCallback {
         override fun onAvailabilityChanged(dataType: DeltaDataType<*, *>, availability: Availability) {
@@ -67,27 +68,39 @@ class HealthServicesRepository(private val context: Context) {
             val heartRateSamples = data.getData(DataType.HEART_RATE_BPM)
             val newestSample = heartRateSamples.maxByOrNull { it.timeDurationFromBoot }
             newestSample?.let { sample ->
-                _heartRateState.update { HeartRateState.Active(sample.value) }
-                store.saveHeartRate(sample.value, "bpm", "Active")
-                updateExternalInterfaces()
+                processBpmSample(sample.value)
             }
         }
     }
 
+    private fun processBpmSample(bpm: Double) {
+        if (bpm.isFinite() && bpm > 0) {
+            _heartRateState.update { HeartRateState.Active(bpm) }
+            store.saveHeartRate(bpm, "bpm", "Active")
+            updateExternalInterfaces()
+        }
+    }
+
     private fun updateExternalInterfaces() {
-        TileService.getUpdater(context)
-            .requestUpdate(MetricTileService::class.java)
-        
-        ComplicationDataSourceUpdateRequester.create(
-            context,
-            ComponentName(context, MetricComplicationService::class.java)
-        ).requestUpdateAll()
+        val now = System.currentTimeMillis()
+        if (lastUpdateTime == 0L || now - lastUpdateTime >= UPDATE_THRESHOLD_MS) {
+            lastUpdateTime = now
+            TileService.getUpdater(context)
+                .requestUpdate(MetricTileService::class.java)
+            
+            ComplicationDataSourceUpdateRequester.create(
+                context,
+                ComponentName(context, MetricComplicationService::class.java)
+            ).requestUpdateAll()
+        }
     }
 
     suspend fun start() {
         if (isRegistered) return
         registerMutex.withLock {
             if (isRegistered) return
+            // Allow the first sample after start to trigger an immediate update
+            lastUpdateTime = 0L 
             try {
                 val capabilities = measureClient.getCapabilitiesAsync().await()
                 if (DataType.HEART_RATE_BPM !in capabilities.supportedDataTypesMeasure) {
@@ -119,5 +132,9 @@ class HealthServicesRepository(private val context: Context) {
 
     fun onPermissionDenied() {
         _heartRateState.update { HeartRateState.PermissionRequired }
+    }
+
+    companion object {
+        private const val UPDATE_THRESHOLD_MS = 10_000L
     }
 }

@@ -17,7 +17,7 @@ class MetricComplicationService : ComplicationDataSourceService() {
         if (type != ComplicationType.SHORT_TEXT) return null
         return ShortTextComplicationData.Builder(
             text = PlainComplicationText.Builder("72").build(),
-            contentDescription = PlainComplicationText.Builder("Heart Rate").build()
+            contentDescription = PlainComplicationText.Builder("Heart rate 72 bpm").build()
         )
         .setTitle(PlainComplicationText.Builder("bpm").build())
         .build()
@@ -30,10 +30,11 @@ class MetricComplicationService : ComplicationDataSourceService() {
         val store = LatestMetricStore(this)
         val bpm = store.getHeartRateBpm()
         
-        val text = if (bpm != null) {
-            String.format(Locale.US, "%.0f", bpm)
+        val (text, description) = if (bpm != null && bpm.isFinite() && bpm > 0) {
+            val value = String.format(Locale.US, "%.0f", bpm)
+            Pair(value, "Heart rate $value bpm")
         } else {
-            "?"
+            Pair("Wait", "Heart rate waiting for data")
         }
 
         val intent = Intent(this, SensorActivity::class.java)
@@ -43,7 +44,7 @@ class MetricComplicationService : ComplicationDataSourceService() {
 
         val complicationData = ShortTextComplicationData.Builder(
             text = PlainComplicationText.Builder(text).build(),
-            contentDescription = PlainComplicationText.Builder("Heart Rate").build()
+            contentDescription = PlainComplicationText.Builder(description).build()
         )
         .setTitle(PlainComplicationText.Builder("bpm").build())
         .setTapAction(pendingIntent)
