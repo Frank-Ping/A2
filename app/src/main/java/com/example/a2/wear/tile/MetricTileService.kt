@@ -1,6 +1,7 @@
 package com.example.a2.wear.tile
 
 import androidx.wear.protolayout.ActionBuilders
+import androidx.wear.protolayout.DimensionBuilders
 import androidx.wear.protolayout.ColorBuilders
 import androidx.wear.protolayout.LayoutElementBuilders
 import androidx.wear.protolayout.ModifiersBuilders
@@ -56,12 +57,16 @@ class MetricTileService : TileService() {
                                     LayoutElementBuilders.Layout.Builder()
                                         .setRoot(
                                             LayoutElementBuilders.Box.Builder()
+                                                .setWidth(DimensionBuilders.expand())
+                                                .setHeight(DimensionBuilders.expand())
                                                 .addContent(
                                                     PrimaryLayout.Builder(requestParams.deviceConfiguration)
                                                         .setResponsiveContentInsetEnabled(true)
                                                         .setContent(
                                                             Text.Builder(this, text)
-                                                                .setTypography(Typography.TYPOGRAPHY_TITLE1)
+                                                                .setTypography(if (bpm != null) Typography.TYPOGRAPHY_TITLE1 else Typography.TYPOGRAPHY_BODY1)
+                                                                .setMaxLines(3)
+                                                                .setMultilineAlignment(LayoutElementBuilders.TEXT_ALIGN_CENTER)
                                                                 .setColor(ColorBuilders.argb(0xFFFFFFFF.toInt()))
                                                                 .build()
                                                         )
@@ -80,9 +85,9 @@ class MetricTileService : TileService() {
         )
     }
 
-    override fun onResourcesRequest(requestParams: RequestBuilders.ResourcesRequest): ListenableFuture<androidx.wear.tiles.ResourceBuilders.Resources> {
+    override fun onTileResourcesRequest(requestParams: RequestBuilders.ResourcesRequest): ListenableFuture<ResourceBuilders.Resources> {
         return Futures.immediateFuture(
-            androidx.wear.tiles.ResourceBuilders.Resources.Builder()
+            ResourceBuilders.Resources.Builder()
                 .setVersion("1")
                 .build()
         )
