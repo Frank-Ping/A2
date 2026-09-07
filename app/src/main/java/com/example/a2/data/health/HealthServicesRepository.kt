@@ -135,6 +135,6 @@ class HealthServicesRepository(private val context: Context) {
     }
 
     companion object {
-        private const val UPDATE_THRESHOLD_MS = 10_000L
+        private const val UPDATE_THRESHOLD_MS = 100L
     }
 }
